@@ -1,8 +1,24 @@
 import { Product } from "./types";
 
-// Supabase Environment variables with default fallbacks
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dhurxwwfzyyfufswyltn.supabase.co";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_5syLiQrKtutpuej94j7vjw_7L1OdrW6";
+// Fallback Supabase Credentials
+const DEFAULT_SUPABASE_URL = "https://dhurxwwfzyyfufswyltn.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_5syLiQrKtutpuej94j7vjw_7L1OdrW6";
+
+export function getSupabaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (envUrl && typeof envUrl === "string" && envUrl.trim().startsWith("http")) {
+    return envUrl.trim();
+  }
+  return DEFAULT_SUPABASE_URL;
+}
+
+export function getSupabaseKey(): string {
+  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (envKey && typeof envKey === "string" && envKey.trim().length > 10) {
+    return envKey.trim();
+  }
+  return DEFAULT_SUPABASE_ANON_KEY;
+}
 
 export interface SupabaseOperationResult<T> {
   success: boolean;
@@ -15,16 +31,14 @@ export interface SupabaseOperationResult<T> {
  * Fetch products directly from Supabase ss_products table
  */
 export async function getProducts(): Promise<Product[]> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.warn("Supabase credentials missing.");
-    return [];
-  }
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/ss_products?select=*&order=created_at.desc`, {
+    const res = await fetch(`${url}/rest/v1/ss_products?select=*&order=created_at.desc`, {
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: key,
+        Authorization: `Bearer ${key}`,
       },
       cache: "no-store",
     });
@@ -51,19 +65,18 @@ export async function getProducts(): Promise<Product[]> {
 export async function createProductWithStatus(
   productData: Omit<Product, "id"> & { id?: string }
 ): Promise<SupabaseOperationResult<Product>> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return { success: false, error: "Supabase 인증 정보(URL/KEY)가 설정되지 않았습니다." };
-  }
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
 
   const { id, ...rest } = productData;
   const bodyPayload = (id && id.includes("-") && id.length === 36) ? { id, ...rest } : rest;
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/ss_products`, {
+    const res = await fetch(`${url}/rest/v1/ss_products`, {
       method: "POST",
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: key,
+        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
         Prefer: "return=representation",
       },
@@ -90,7 +103,7 @@ export async function createProductWithStatus(
         return {
           success: false,
           code: "42501",
-          error: "Supabase RLS(행 수준 보안) 정책 차단: ss_products 테이블의 INSERT 권한 허용 SQL을 실행해 주세요.",
+          error: "Supabase RLS(행 수준 보안) 정책 차단: Supabase SQL Editor에서 ss_products 테이블 INSERT 허용 쿼리를 실행해 주세요.",
         };
       }
 
@@ -116,17 +129,15 @@ export async function createProduct(
  * Update an existing product directly in Supabase ss_products table
  */
 export async function updateProduct(id: string, productData: Partial<Product>): Promise<boolean> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error("Supabase credentials missing.");
-    return false;
-  }
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/ss_products?id=eq.${id}`, {
+    const res = await fetch(`${url}/rest/v1/ss_products?id=eq.${id}`, {
       method: "PATCH",
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: key,
+        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(productData),
@@ -149,17 +160,15 @@ export async function updateProduct(id: string, productData: Partial<Product>): 
  * Delete a product directly from Supabase ss_products table
  */
 export async function deleteProduct(id: string): Promise<boolean> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error("Supabase credentials missing.");
-    return false;
-  }
+  const url = getSupabaseUrl();
+  const key = getSupabaseKey();
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/ss_products?id=eq.${id}`, {
+    const res = await fetch(`${url}/rest/v1/ss_products?id=eq.${id}`, {
       method: "DELETE",
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: key,
+        Authorization: `Bearer ${key}`,
       },
     });
 
@@ -194,15 +203,14 @@ export async function updateConfig(key: string, value: boolean): Promise<void> {
  * Generic Fetch global config value from Supabase ss_config table
  */
 export async function getConfigValue<T>(key: string, defaultValue: T): Promise<T> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return defaultValue;
-  }
+  const url = getSupabaseUrl();
+  const keyStr = getSupabaseKey();
 
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/ss_config?key=eq.${key}&select=value`, {
+    const res = await fetch(`${url}/rest/v1/ss_config?key=eq.${key}&select=value`, {
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: keyStr,
+        Authorization: `Bearer ${keyStr}`,
       },
       cache: "no-store",
     });
@@ -225,16 +233,15 @@ export async function getConfigValue<T>(key: string, defaultValue: T): Promise<T
  * Generic Update global config value in Supabase ss_config table
  */
 export async function updateConfigValue<T>(key: string, value: T): Promise<void> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return;
-  }
+  const url = getSupabaseUrl();
+  const keyStr = getSupabaseKey();
 
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/ss_config`, {
+    await fetch(`${url}/rest/v1/ss_config`, {
       method: "POST",
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: keyStr,
+        Authorization: `Bearer ${keyStr}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates",
       },
@@ -253,16 +260,15 @@ export async function updateConfigValue<T>(key: string, value: T): Promise<void>
  * Log user outlink clicks to ss_clicks table
  */
 export async function logClick(productId: string, platform: "coupang" | "naver"): Promise<void> {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return;
-  }
+  const url = getSupabaseUrl();
+  const keyStr = getSupabaseKey();
 
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/ss_clicks`, {
+    await fetch(`${url}/rest/v1/ss_clicks`, {
       method: "POST",
       headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: keyStr,
+        Authorization: `Bearer ${keyStr}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

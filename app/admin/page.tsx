@@ -174,6 +174,9 @@ export default function AdminDashboardPage() {
   const [manualCoupangPrice, setManualCoupangPrice] = useState<string>("");
   const [manualImageUrl, setManualImageUrl] = useState<string>("");
 
+  // RLS Notice Banner State
+  const [rlsErrorNotice, setRlsErrorNotice] = useState<string | null>(null);
+
   // Quick Inline Add Handler (NO Popup Modal Required!)
   const handleInlineQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,8 +244,12 @@ export default function AdminDashboardPage() {
         setManualNameKr("");
         setManualCoupangPrice("");
         setManualImageUrl("");
+        setRlsErrorNotice(null);
         loadProducts();
       } else {
+        if (dbRes.code === "42501" || dbRes.error?.includes("RLS")) {
+          setRlsErrorNotice(dbRes.error || "Supabase RLS 보안 정책에 의해 INSERT가 차단되었습니다.");
+        }
         showToast(dbRes.error || "상품 등록 중 오류가 발생했습니다.", "error");
       }
     } catch (err: any) {
@@ -291,8 +298,12 @@ export default function AdminDashboardPage() {
       setManualCoupangPrice("");
       setManualImageUrl("");
       setShowManualFields(false);
+      setRlsErrorNotice(null);
       loadProducts();
     } else {
+      if (res.code === "42501" || res.error?.includes("RLS")) {
+        setRlsErrorNotice(res.error || "Supabase RLS 보안 정책에 의해 INSERT가 차단되었습니다.");
+      }
       showToast(res.error || "상품 저장 중 오류가 발생했습니다.", "error");
     }
   };
@@ -727,6 +738,31 @@ export default function AdminDashboardPage() {
           <span className="text-[11px] text-gray-400 font-medium">푸터 영역 자동 대응</span>
         </div>
       </div>
+
+      {/* RLS Error Guidance Banner */}
+      {rlsErrorNotice && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-xs text-amber-900 space-y-2 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-bold text-sm text-amber-900">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <span>Supabase DB RLS(행 수준 보안) INSERT 정책 허용 필요</span>
+            </div>
+            <button
+              onClick={() => setRlsErrorNotice(null)}
+              className="text-amber-600 hover:text-amber-800 font-bold text-xs"
+            >
+              ✕ 닫기
+            </button>
+          </div>
+          <p className="leading-relaxed font-medium">{rlsErrorNotice}</p>
+          <div className="bg-white p-3 rounded-xl border border-amber-200 font-mono text-[11px] select-all text-gray-800 break-all font-semibold">
+            CREATE POLICY &quot;Allow public insert access on ss_products&quot; ON public.ss_products FOR INSERT WITH CHECK (true);
+          </div>
+          <p className="text-[11px] text-amber-700">
+            💡 Supabase Dashboard ➔ SQL Editor에서 위 SQL 쿼리를 1회 실행해주시면 상품 등록이 즉시 활성화됩니다.
+          </p>
+        </div>
+      )}
 
       {/* Products Table (CRUD Main View) */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
