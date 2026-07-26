@@ -5,11 +5,12 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 /**
- * Fetch products from Supabase ss_products table (returns [] if DB is empty or disconnected)
+ * Fetch products directly from Supabase ss_products table (No LocalStorage fallback)
  */
 export async function getProducts(): Promise<Product[]> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return getLocalProductsFallback();
+    console.warn("Supabase credentials missing.");
+    return [];
   }
 
   try {
@@ -22,60 +23,33 @@ export async function getProducts(): Promise<Product[]> {
     });
 
     if (!res.ok) {
-      console.warn("Supabase fetch failed.");
-      return getLocalProductsFallback();
+      console.warn("Supabase fetch failed with status:", res.status);
+      return [];
     }
 
     const data = await res.json();
     if (!Array.isArray(data)) {
-      return getLocalProductsFallback();
+      return [];
     }
     return data as Product[];
   } catch (err) {
     console.error("Supabase connection error:", err);
-    return getLocalProductsFallback();
+    return [];
   }
 }
 
 /**
- * Fallback local products storage when Supabase is disconnected (defaults to empty array [])
- */
-function getLocalProductsFallback(): Product[] {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem("pickviet_custom_products");
-  if (stored) {
-    try {
-      return JSON.parse(stored);
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function saveLocalProductsFallback(products: Product[]) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("pickviet_custom_products", JSON.stringify(products));
-    window.dispatchEvent(new Event("storage"));
-  }
-}
-
-/**
- * Create a new product in ss_products
+ * Create a new product directly in Supabase ss_products table (No LocalStorage fallback)
  */
 export async function createProduct(productData: Omit<Product, "id"> & { id?: string }): Promise<Product | null> {
-  const newId = productData.id || `prod-${Date.now()}`;
-  const newProduct: Product = {
-    ...productData,
-    id: newId,
-  };
-
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    const current = getLocalProductsFallback();
-    const updated = [newProduct, ...current];
-    saveLocalProductsFallback(updated);
-    return newProduct;
+    console.error("Supabase credentials missing.");
+    return null;
   }
+
+  // Omit custom non-UUID id if empty or auto-generated so Supabase UUID column works
+  const { id, ...rest } = productData;
+  const bodyPayload = (id && id.includes("-") && id.length === 36) ? { id, ...rest } : rest;
 
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/ss_products`, {
@@ -86,36 +60,30 @@ export async function createProduct(productData: Omit<Product, "id"> & { id?: st
         "Content-Type": "application/json",
         Prefer: "return=representation",
       },
-      body: JSON.stringify(newProduct),
+      body: JSON.stringify(bodyPayload),
     });
 
     if (res.ok) {
       const data = await res.json();
-      return (Array.isArray(data) && data.length > 0 ? data[0] : newProduct) as Product;
+      return (Array.isArray(data) && data.length > 0 ? data[0] : null) as Product | null;
     } else {
-      console.error("Failed to create product in Supabase", await res.text());
-      // fallback
-      const current = getLocalProductsFallback();
-      saveLocalProductsFallback([newProduct, ...current]);
-      return newProduct;
+      const errText = await res.text();
+      console.error("Failed to insert product into Supabase ss_products:", errText);
+      return null;
     }
   } catch (err) {
-    console.error("Error creating product:", err);
-    const current = getLocalProductsFallback();
-    saveLocalProductsFallback([newProduct, ...current]);
-    return newProduct;
+    console.error("Error inserting product into Supabase:", err);
+    return null;
   }
 }
 
 /**
- * Update an existing product in ss_products
+ * Update an existing product directly in Supabase ss_products table (No LocalStorage fallback)
  */
 export async function updateProduct(id: string, productData: Partial<Product>): Promise<boolean> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    const current = getLocalProductsFallback();
-    const updated = current.map((p) => (p.id === id ? { ...p, ...productData } : p));
-    saveLocalProductsFallback(updated);
-    return true;
+    console.error("Supabase credentials missing.");
+    return false;
   }
 
   try {
@@ -132,29 +100,23 @@ export async function updateProduct(id: string, productData: Partial<Product>): 
     if (res.ok) {
       return true;
     } else {
-      const current = getLocalProductsFallback();
-      const updated = current.map((p) => (p.id === id ? { ...p, ...productData } : p));
-      saveLocalProductsFallback(updated);
-      return true;
+      const errText = await res.text();
+      console.error("Failed to update product in Supabase:", errText);
+      return false;
     }
   } catch (err) {
-    console.error("Error updating product:", err);
-    const current = getLocalProductsFallback();
-    const updated = current.map((p) => (p.id === id ? { ...p, ...productData } : p));
-    saveLocalProductsFallback(updated);
-    return true;
+    console.error("Error updating product in Supabase:", err);
+    return false;
   }
 }
 
 /**
- * Delete a product from ss_products
+ * Delete a product directly from Supabase ss_products table (No LocalStorage fallback)
  */
 export async function deleteProduct(id: string): Promise<boolean> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    const current = getLocalProductsFallback();
-    const updated = current.filter((p) => p.id !== id);
-    saveLocalProductsFallback(updated);
-    return true;
+    console.error("Supabase credentials missing.");
+    return false;
   }
 
   try {
@@ -169,49 +131,34 @@ export async function deleteProduct(id: string): Promise<boolean> {
     if (res.ok) {
       return true;
     } else {
-      const current = getLocalProductsFallback();
-      const updated = current.filter((p) => p.id !== id);
-      saveLocalProductsFallback(updated);
-      return true;
+      const errText = await res.text();
+      console.error("Failed to delete product in Supabase:", errText);
+      return false;
     }
   } catch (err) {
-    console.error("Error deleting product:", err);
-    const current = getLocalProductsFallback();
-    const updated = current.filter((p) => p.id !== id);
-    saveLocalProductsFallback(updated);
-    return true;
+    console.error("Error deleting product in Supabase:", err);
+    return false;
   }
 }
 
 /**
- * Fetch global config (e.g. show_naver_products) from ss_config table
+ * Fetch global config from Supabase ss_config table
  */
 export async function getConfig(key: string, defaultValue: boolean = true): Promise<boolean> {
   return getConfigValue<boolean>(key, defaultValue);
 }
 
 /**
- * Update global config in ss_config table and localStorage
+ * Update global config in Supabase ss_config table
  */
 export async function updateConfig(key: string, value: boolean): Promise<void> {
   return updateConfigValue<boolean>(key, value);
 }
 
 /**
- * Generic Fetch global config value from ss_config or localStorage
+ * Generic Fetch global config value from Supabase ss_config table (No LocalStorage fallback)
  */
 export async function getConfigValue<T>(key: string, defaultValue: T): Promise<T> {
-  if (typeof window !== "undefined") {
-    const localVal = localStorage.getItem(key);
-    if (localVal !== null) {
-      try {
-        return JSON.parse(localVal) as T;
-      } catch {
-        return (localVal as unknown) as T;
-      }
-    }
-  }
-
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return defaultValue;
   }
@@ -240,14 +187,9 @@ export async function getConfigValue<T>(key: string, defaultValue: T): Promise<T
 }
 
 /**
- * Generic Update global config value in ss_config table and localStorage
+ * Generic Update global config value in Supabase ss_config table (No LocalStorage fallback)
  */
 export async function updateConfigValue<T>(key: string, value: T): Promise<void> {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(key, JSON.stringify(value));
-    window.dispatchEvent(new Event("storage"));
-  }
-
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return;
   }

@@ -55,7 +55,7 @@ export default function DemoClient() {
     setProducts(data);
   }, []);
 
-  // Sync with Supabase config / localStorage on mount and listen to storage events
+  // Fetch real-time products and config directly from Supabase DB
   useEffect(() => {
     loadLiveProducts();
 
@@ -66,19 +66,6 @@ export default function DemoClient() {
     getConfigValue<number>("mobile_grid_cols", 2).then((val) => {
       setMobileGridCols(Number(val) || 2);
     });
-
-    const handleStorageChange = () => {
-      loadLiveProducts();
-      getConfig("show_naver_products", true).then((val) => {
-        setShowNaverProducts(val);
-      });
-      getConfigValue<number>("mobile_grid_cols", 2).then((val) => {
-        setMobileGridCols(Number(val) || 2);
-      });
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, [loadLiveProducts]);
 
   const showToast = (msg: string) => {
