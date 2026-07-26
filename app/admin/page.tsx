@@ -150,6 +150,13 @@ export default function AdminDashboardPage() {
     showToast(nextState ? "🟢 네이버 상품 비교가 켜졌습니다." : "🚀 쿠팡 단독 모드로 전환되었습니다.");
   };
 
+  // Change Mobile Grid Layout Setting (1열 / 2열 / 3열)
+  const handleMobileGridChange = async (cols: number) => {
+    setMobileGridCols(cols);
+    await updateConfigValue<number>("mobile_grid_cols", cols);
+    showToast(`📱 모바일 상품 진열이 ${cols}열 모드로 변경되었습니다.`);
+  };
+
   // Quick Inline Registration State
   const [quickLinkInput, setQuickLinkInput] = useState<string>("");
   const [quickCategory, setQuickCategory] = useState<CategoryType>("🇻🇳 베트남 식자재/생필품");
