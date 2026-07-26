@@ -30,7 +30,9 @@ import {
   Rocket,
   ShoppingBag,
   Sparkles,
-  LayoutGrid
+  LayoutGrid,
+  Wand2,
+  Loader2
 } from "lucide-react";
 
 const CATEGORY_OPTIONS: CategoryType[] = [
@@ -153,6 +155,57 @@ export default function AdminDashboardPage() {
     setMobileGridCols(cols);
     await updateConfigValue<number>("mobile_grid_cols", cols);
     showToast(`📱 모바일 상품 진열이 ${cols}열 모드로 변경되었습니다.`);
+  };
+
+  // AI Auto-Fill State
+  const [isAutoFilling, setIsAutoFilling] = useState<boolean>(false);
+
+  // AI Auto-Fill Handler
+  const handleAutoFill = async () => {
+    if (!formState.coupang_link.trim()) {
+      showToast("쿠팡 파트너스 단축 링크를 먼저 입력해 주세요.", "error");
+      return;
+    }
+
+    setIsAutoFilling(true);
+    try {
+      const res = await fetch("/api/admin/auto-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coupang_url: formState.coupang_link }),
+      });
+
+      const json = await res.json();
+      if (json.success && json.data) {
+        const d = json.data;
+        setFormState((prev) => ({
+          ...prev,
+          name_kr: d.name_kr || prev.name_kr,
+          name_vn: d.name_vn || prev.name_vn,
+          category: d.category || prev.category,
+          coupang_price: d.coupang_price || prev.coupang_price,
+          naver_price: d.naver_price || prev.naver_price,
+          coupang_link: d.coupang_link || prev.coupang_link,
+          naver_link: d.naver_link || prev.naver_link,
+          naver_point_back: d.naver_point_back || prev.naver_point_back,
+          image_url: d.image_url || prev.image_url,
+          lowest_price_30days: d.lowest_price_30days || prev.lowest_price_30days,
+          price_history_trend: d.price_history_trend || prev.price_history_trend,
+          badge: d.badge || prev.badge,
+          is_rocket: typeof d.is_rocket === "boolean" ? d.is_rocket : prev.is_rocket,
+          features_kr_str: Array.isArray(d.features_kr) ? d.features_kr.join(", ") : prev.features_kr_str,
+          features_vn_str: Array.isArray(d.features_vn) ? d.features_vn.join(", ") : prev.features_vn_str,
+        }));
+        showToast("✨ AI가 쿠팡 메타데이터 및 베트남어 번역을 성공적으로 자동 채웠습니다!");
+      } else {
+        showToast(json.error || "AI 자동 채우기에 실패했습니다.", "error");
+      }
+    } catch (err) {
+      console.error("Auto fill request error:", err);
+      showToast("AI 자동 채우기 서버 요청 중 오류가 발생했습니다.", "error");
+    } finally {
+      setIsAutoFilling(false);
+    }
   };
 
   // Open Form Modal for Create
@@ -661,6 +714,48 @@ export default function AdminDashboardPage() {
 
             {/* Modal Form Body */}
             <form onSubmit={handleFormSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+              {/* AI Auto-Fill Section */}
+              <div className="bg-gradient-to-r from-red-50 via-rose-50 to-indigo-50 p-4 rounded-xl border border-red-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-extrabold text-gray-900 text-xs">
+                    <Wand2 className="w-4 h-4 text-red-600 animate-pulse" />
+                    <span>쿠팡 링크로 AI 자동 채우기</span>
+                  </div>
+                  <span className="text-[10px] bg-red-600 text-white font-bold px-2 py-0.5 rounded-full shadow-sm">
+                    Gemini AI Powered
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-600">
+                  쿠팡 파트너스 단축 링크를 입력하고 [AI 자동 채우기]를 누르면 상품명, 이미지, 베트남어 번역, 네이버 최저가 및 특징 태그가 자동 입력됩니다.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="url"
+                    placeholder="https://link.coupang.com/a/..."
+                    value={formState.coupang_link}
+                    onChange={(e) => setFormState({ ...formState, coupang_link: e.target.value })}
+                    className="flex-1 p-2.5 bg-white border border-gray-300 rounded-xl text-xs focus:outline-none focus:border-red-500 font-medium shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    disabled={isAutoFilling}
+                    onClick={handleAutoFill}
+                    className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-red-500/20 flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    {isAutoFilling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-yellow-300" />
+                        <span>AI 분석 중...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-yellow-300" />
+                        <span>AI 자동 채우기</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
               {/* Row 1: Names */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
