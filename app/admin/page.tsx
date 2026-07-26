@@ -497,7 +497,6 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2">
           <a
             href="/demo"
             target="_blank"
