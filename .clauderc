@@ -1,0 +1,8 @@
+# Agent Execution Rules
+- **DO NOT** run automated tests (npm test, jest, vitest, cypress) after code generation.
+- **DO NOT** execute browser automation or E2E tests automatically.
+- Just write the code, update files, and provide instructions for manual testing.
+
+# Language & Communication Style
+- Always respond, comment code, and write documentation in Korean (한국어).
+- System messages, explanations, and git commit messages should be in Korean.
