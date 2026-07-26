@@ -22,7 +22,7 @@ export interface Product {
   
   // 가격 동향 및 히스토리
   lowest_price_30days: number;    // 30일 최저가
-  price_history_trend: string;    // 가격 트렌드 (예: "지난달 대비 12% 할인", "역대 최저가")
+  price_history_trend?: string;   // 가격 트렌드 (예: "지난달 대비 12% 할인", "역대 최저가")
   
   // 특징 및 카테고리
   features_kr: string[];          // 한국어 특징 태그
