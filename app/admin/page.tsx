@@ -221,56 +221,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // AI Auto-Fill State
-  const [isAutoFilling, setIsAutoFilling] = useState<boolean>(false);
 
-  // AI Auto-Fill Handler
-  const handleAutoFill = async () => {
-    if (!formState.coupang_link.trim()) {
-      showToast("쿠팡 파트너스 단축 링크를 먼저 입력해 주세요.", "error");
-      return;
-    }
-
-    setIsAutoFilling(true);
-    try {
-      const res = await fetch("/api/admin/auto-fill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coupang_url: formState.coupang_link }),
-      });
-
-      const json = await res.json();
-      if (json.success && json.data) {
-        const d = json.data;
-        setFormState((prev) => ({
-          ...prev,
-          name_kr: d.name_kr || prev.name_kr,
-          name_vn: d.name_vn || prev.name_vn,
-          category: d.category || prev.category,
-          coupang_price: d.coupang_price || prev.coupang_price,
-          naver_price: d.naver_price ?? prev.naver_price,
-          coupang_link: d.coupang_link || prev.coupang_link,
-          naver_link: d.naver_link ?? prev.naver_link,
-          naver_point_back: d.naver_point_back ?? prev.naver_point_back,
-          image_url: d.image_url || prev.image_url,
-          lowest_price_30days: d.lowest_price_30days ?? prev.lowest_price_30days,
-          price_history_trend: d.price_history_trend ?? prev.price_history_trend,
-          badge: d.badge ?? prev.badge,
-          is_rocket: typeof d.is_rocket === "boolean" ? d.is_rocket : prev.is_rocket,
-          features_kr_str: Array.isArray(d.features_kr) ? d.features_kr.join(", ") : prev.features_kr_str,
-          features_vn_str: Array.isArray(d.features_vn) ? d.features_vn.join(", ") : prev.features_vn_str,
-        }));
-        showToast("✨ 쿠팡 메타데이터(상품명, 이미지, 가격, 로켓배송)를 성공적으로 스크랩했습니다!");
-      } else {
-        showToast(json.error || "쿠팡 정보 스크랩에 실패했습니다.", "error");
-      }
-    } catch (err) {
-      console.error("Auto fill request error:", err);
-      showToast("쿠팡 정보 스크랩 중 서버 오류가 발생했습니다.", "error");
-    } finally {
-      setIsAutoFilling(false);
-    }
-  };
 
   // Open Form Modal for Edit
   const handleOpenEditModal = (prod: Product) => {
@@ -298,41 +249,10 @@ export default function AdminDashboardPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formState.coupang_link.trim()) {
-      showToast("쿠팡 파트너스 단축 링크를 입력해 주세요.", "error");
-      return;
-    }
-
-    let finalNameKr = formState.name_kr.trim();
-    let finalImageUrl = formState.image_url.trim();
-    let finalCoupangPrice = Number(formState.coupang_price) || 0;
-    let finalIsRocket = formState.is_rocket;
-
-    // For new products: automatically scrape metadata if name_kr or coupang_price is not manually filled!
-    if (!editingProduct && (!finalNameKr || !finalCoupangPrice || !finalImageUrl)) {
-      setIsAutoFilling(true);
-      try {
-        const res = await fetch("/api/admin/auto-fill", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ coupang_url: formState.coupang_link.trim() }),
-        });
-        const json = await res.json();
-        if (json.success && json.data) {
-          if (!finalNameKr) finalNameKr = json.data.name_kr || "쿠팡 파트너스 상품";
-          if (!finalImageUrl) finalImageUrl = json.data.image_url || "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=600";
-          if (!finalCoupangPrice) finalCoupangPrice = json.data.coupang_price || 15000;
-          if (typeof json.data.is_rocket === "boolean") finalIsRocket = json.data.is_rocket;
-        }
-      } catch (err) {
-        console.error("Auto scrape on submit error:", err);
-      } finally {
-        setIsAutoFilling(false);
-      }
-    }
-
-    if (!finalNameKr) finalNameKr = "쿠팡 파트너스 상품";
-    if (!finalImageUrl) finalImageUrl = "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=600";
+  // Submit Edit Form
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
 
     const features_kr = formState.features_kr_str
       .split(",")
@@ -345,43 +265,30 @@ export default function AdminDashboardPage() {
       .filter(Boolean);
 
     const payload: Omit<Product, "id"> = {
-      name_kr: finalNameKr,
-      name_vn: formState.name_vn.trim() || finalNameKr,
+      name_kr: formState.name_kr.trim() || editingProduct.name_kr,
+      name_vn: formState.name_vn.trim() || formState.name_kr.trim() || editingProduct.name_kr,
       category: formState.category,
-      coupang_price: finalCoupangPrice,
+      coupang_price: Number(formState.coupang_price) || 0,
       naver_price: formState.naver_price ? Number(formState.naver_price) : undefined,
-      coupang_link: formState.coupang_link.trim(),
+      coupang_link: formState.coupang_link.trim() || editingProduct.coupang_link,
       naver_link: formState.naver_link.trim() || undefined,
       naver_point_back: formState.naver_point_back ? Number(formState.naver_point_back) : undefined,
-      image_url: finalImageUrl,
-      lowest_price_30days: formState.lowest_price_30days ? Number(formState.lowest_price_30days) : finalCoupangPrice,
+      image_url: formState.image_url.trim() || editingProduct.image_url,
+      lowest_price_30days: formState.lowest_price_30days ? Number(formState.lowest_price_30days) : Number(formState.coupang_price),
       price_history_trend: formState.price_history_trend.trim() || undefined,
       badge: formState.badge.trim() || undefined,
-      is_rocket: finalIsRocket,
+      is_rocket: Boolean(formState.is_rocket),
       features_kr,
       features_vn,
     };
 
-    if (editingProduct) {
-      // Update existing
-      const success = await updateProduct(editingProduct.id, payload);
-      if (success) {
-        showToast(`'${payload.name_kr}' 상품 정보가 수정되었습니다.`);
-        setEditingProduct(null);
-        loadProducts();
-      } else {
-        showToast("상품 수정 중 오류가 발생했습니다.", "error");
-      }
+    const success = await updateProduct(editingProduct.id, payload);
+    if (success) {
+      showToast(`'${payload.name_kr}' 상품 정보가 수정되었습니다.`);
+      setEditingProduct(null);
+      loadProducts();
     } else {
-      // Create new
-      const created = await createProduct(payload);
-      if (created) {
-        showToast(`🚀 쿠팡 파트너스 상품 '${payload.name_kr}'이(가) 등록되었습니다!`);
-        setIsFormModalOpen(false);
-        loadProducts();
-      } else {
-        showToast("상품 등록 중 오류가 발생했습니다.", "error");
-      }
+      showToast("상품 수정 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -995,26 +902,16 @@ export default function AdminDashboardPage() {
               <div className="pt-4 border-t border-gray-200 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsFormModalOpen(false)}
+                  onClick={() => setEditingProduct(null)}
                   className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-colors"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  disabled={isAutoFilling}
-                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-extrabold transition-all shadow-md shadow-red-500/20 flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold transition-all shadow-md shadow-red-500/20"
                 >
-                  {isAutoFilling ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-yellow-300" />
-                      <span>메타데이터 수집 및 저장 중...</span>
-                    </>
-                  ) : editingProduct ? (
-                    "상품 수정 저장"
-                  ) : (
-                    "🚀 쿠팡 상품 즉시 등록하기"
-                  )}
+                  상품 수정 저장
                 </button>
               </div>
             </form>
