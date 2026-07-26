@@ -335,6 +335,7 @@ export default function DemoPage() {
                         src={product.image_url}
                         alt={product.name_kr}
                         fill
+                        unoptimized
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       />
@@ -581,6 +582,7 @@ export default function DemoPage() {
                       src={item.image_url}
                       alt={item.name_kr}
                       fill
+                      unoptimized
                       className="object-cover"
                       sizes="44px"
                     />
@@ -660,6 +662,7 @@ export default function DemoPage() {
                             src={item.image_url}
                             alt={item.name_kr}
                             fill
+                            unoptimized
                             className="object-cover"
                             sizes="170px"
                           />

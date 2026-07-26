@@ -765,6 +765,7 @@ export default function AdminDashboardPage() {
                                 src={prod.image_url}
                                 alt={nameKr}
                                 fill
+                                unoptimized
                                 className="object-cover"
                                 sizes="44px"
                               />
@@ -976,8 +977,20 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Row 4: Links */}
+              {/* Row 4: Image URL & Links */}
               <div className="space-y-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    상품 이미지 URL (image_url)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://thumbnail.coupangcdn.com/..."
+                    value={formState.image_url}
+                    onChange={(e) => setFormState({ ...formState, image_url: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all font-mono text-[11px]"
+                  />
+                </div>
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">
                     쿠팡 파트너스 단축 링크
