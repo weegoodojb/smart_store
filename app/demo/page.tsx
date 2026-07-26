@@ -19,9 +19,8 @@ import {
   Rocket,
   Gift
 } from "lucide-react";
-import { MOCK_PRODUCTS } from "@/lib/mockProducts";
 import { Product, CategoryType } from "@/lib/types";
-import { getConfig, getConfigValue, logClick } from "@/lib/supabase";
+import { getProducts, getConfig, getConfigValue, logClick } from "@/lib/supabase";
 
 const CATEGORIES: CategoryType[] = [
   "전체", 
@@ -38,6 +37,9 @@ export default function DemoPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
+  // Real-time Supabase Products state
+  const [products, setProducts] = useState<Product[]>([]);
+
   // Multilingual state (KR / VN)
   const [lang, setLang] = useState<"KR" | "VN">("KR");
 
@@ -47,8 +49,16 @@ export default function DemoPage() {
   // Mobile Grid Cols state (1, 2, or 3)
   const [mobileGridCols, setMobileGridCols] = useState<number>(2);
 
+  // Load real-time products from Supabase
+  const loadLiveProducts = useCallback(async () => {
+    const data = await getProducts();
+    setProducts(data);
+  }, []);
+
   // Sync with Supabase config / localStorage on mount and listen to storage events
   useEffect(() => {
+    loadLiveProducts();
+
     getConfig("show_naver_products", true).then((val) => {
       setShowNaverProducts(val);
     });
@@ -58,6 +68,7 @@ export default function DemoPage() {
     });
 
     const handleStorageChange = () => {
+      loadLiveProducts();
       getConfig("show_naver_products", true).then((val) => {
         setShowNaverProducts(val);
       });
@@ -68,22 +79,22 @@ export default function DemoPage() {
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  }, [loadLiveProducts]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  // Filter products
+  // Filter products from live Supabase DB
   const filteredProducts = useMemo(() => {
-    return MOCK_PRODUCTS.filter((product) => {
+    return products.filter((product) => {
       const matchCategory = selectedCategory === "전체" || product.category === selectedCategory;
-      const searchTarget = (product.name_kr + product.name_vn + product.features_kr.join(" ")).toLowerCase();
+      const searchTarget = ((product.name_kr || "") + (product.name_vn || "") + (product.features_kr || []).join(" ")).toLowerCase();
       const matchSearch = searchTarget.includes(searchQuery.toLowerCase());
       return matchCategory && matchSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery]);
 
   // Toggle compare selection (max 3)
   const toggleCompare = (product: Product) => {

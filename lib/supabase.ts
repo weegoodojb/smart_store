@@ -1,4 +1,3 @@
-import { MOCK_PRODUCTS } from "./mockProducts";
 import { Product } from "./types";
 
 // Supabase Environment variables
@@ -6,7 +5,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 /**
- * Fetch products from Supabase ss_products table (or fallback to MOCK_PRODUCTS if Supabase is not connected)
+ * Fetch products from Supabase ss_products table (returns [] if DB is empty or disconnected)
  */
 export async function getProducts(): Promise<Product[]> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -23,12 +22,12 @@ export async function getProducts(): Promise<Product[]> {
     });
 
     if (!res.ok) {
-      console.warn("Supabase fetch failed, falling back to mock data.");
+      console.warn("Supabase fetch failed.");
       return getLocalProductsFallback();
     }
 
     const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) {
+    if (!Array.isArray(data)) {
       return getLocalProductsFallback();
     }
     return data as Product[];
@@ -39,19 +38,19 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 /**
- * Fallback local products storage when Supabase is disconnected
+ * Fallback local products storage when Supabase is disconnected (defaults to empty array [])
  */
 function getLocalProductsFallback(): Product[] {
-  if (typeof window === "undefined") return MOCK_PRODUCTS;
+  if (typeof window === "undefined") return [];
   const stored = localStorage.getItem("pickviet_custom_products");
   if (stored) {
     try {
       return JSON.parse(stored);
     } catch {
-      return MOCK_PRODUCTS;
+      return [];
     }
   }
-  return MOCK_PRODUCTS;
+  return [];
 }
 
 function saveLocalProductsFallback(products: Product[]) {
