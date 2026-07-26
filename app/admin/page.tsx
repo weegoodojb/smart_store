@@ -150,11 +150,69 @@ export default function AdminDashboardPage() {
     showToast(nextState ? "🟢 네이버 상품 비교가 켜졌습니다." : "🚀 쿠팡 단독 모드로 전환되었습니다.");
   };
 
-  // Change Mobile Grid Layout Setting (1열 / 2열 / 3열)
-  const handleMobileGridChange = async (cols: number) => {
-    setMobileGridCols(cols);
-    await updateConfigValue<number>("mobile_grid_cols", cols);
-    showToast(`📱 모바일 상품 진열이 ${cols}열 모드로 변경되었습니다.`);
+  // Quick Inline Registration State
+  const [quickLinkInput, setQuickLinkInput] = useState<string>("");
+  const [quickCategory, setQuickCategory] = useState<CategoryType>("🇻🇳 베트남 식자재/생필품");
+  const [isQuickAdding, setIsQuickAdding] = useState<boolean>(false);
+
+  // Quick Inline Add Handler (NO Popup Modal Required!)
+  const handleInlineQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickLinkInput.trim()) {
+      showToast("쿠팡 파트너스 단축 링크를 입력해 주세요.", "error");
+      return;
+    }
+
+    setIsQuickAdding(true);
+    try {
+      // 1. Scrape metadata from OpenGraph
+      const res = await fetch("/api/admin/auto-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coupang_url: quickLinkInput.trim() }),
+      });
+
+      const json = await res.json();
+      let name_kr = "쿠팡 파트너스 상품";
+      let image_url = "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=600";
+      let coupang_price = 15000;
+      let is_rocket = true;
+
+      if (json.success && json.data) {
+        if (json.data.name_kr) name_kr = json.data.name_kr;
+        if (json.data.image_url) image_url = json.data.image_url;
+        if (json.data.coupang_price) coupang_price = json.data.coupang_price;
+        if (typeof json.data.is_rocket === "boolean") is_rocket = json.data.is_rocket;
+      }
+
+      // 2. Build product payload & save to DB
+      const payload: Omit<Product, "id"> = {
+        name_kr,
+        name_vn: name_kr, // Fallback to name_kr
+        category: quickCategory,
+        coupang_price,
+        coupang_link: quickLinkInput.trim(),
+        image_url,
+        lowest_price_30days: coupang_price,
+        is_rocket,
+        features_kr: [],
+        features_vn: [],
+      };
+
+      const created = await createProduct(payload);
+      if (created) {
+        showToast(`🚀 '${payload.name_kr}' 상품이 성공적으로 등록되었습니다!`);
+        setQuickLinkInput("");
+        loadProducts();
+      } else {
+        showToast("상품 등록 중 오류가 발생했습니다.", "error");
+      }
+    } catch (err) {
+      console.error("Inline quick add error:", err);
+      showToast("상품 등록 중 서버 오류가 발생했습니다.", "error");
+    } finally {
+      setIsQuickAdding(false);
+    }
   };
 
   // AI Auto-Fill State
@@ -439,14 +497,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleOpenAddModal}
-            className="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-colors shadow-md shadow-red-500/20 flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>신규 상품 등록</span>
-          </button>
-
+        <div className="flex items-center gap-2">
           <a
             href="/demo"
             target="_blank"
@@ -464,6 +515,67 @@ export default function AdminDashboardPage() {
             <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
+
+      {/* Inline Quick Product Add Bar (NO POPUP MODAL REQUIRED!) */}
+      <div className="bg-white p-5 rounded-2xl border border-red-200 shadow-md space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold">
+            🚀
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm text-gray-900">쿠팡 파트너스 상품 원클릭 즉시 등록</h3>
+            <p className="text-xs text-gray-500">쿠팡 단축 링크를 입력하고 [상품 등록하기]를 누르면 메타데이터(상품명, 이미지, 가격, 로켓배송)가 자동 수집되어 즉시 저장됩니다.</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleInlineQuickAdd} className="flex flex-col sm:flex-row items-center gap-2">
+          {/* Input 1: Coupang Link */}
+          <div className="flex-1 w-full">
+            <input
+              type="url"
+              required
+              placeholder="쿠팡 파트너스 단축 링크 입력 (예: https://link.coupang.com/a/...)"
+              value={quickLinkInput}
+              onChange={(e) => setQuickLinkInput(e.target.value)}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white text-xs font-medium transition-all shadow-inner"
+            />
+          </div>
+
+          {/* Input 2: Category Dropdown */}
+          <div className="w-full sm:w-56">
+            <select
+              value={quickCategory}
+              onChange={(e) => setQuickCategory(e.target.value as CategoryType)}
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white text-xs font-bold"
+            >
+              {CATEGORY_OPTIONS.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isQuickAdding}
+            className="w-full sm:w-auto px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-red-500/20 flex items-center justify-center gap-1.5 flex-shrink-0 whitespace-nowrap"
+          >
+            {isQuickAdding ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-yellow-300" />
+                <span>정보 수집 및 저장 중...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>상품 등록하기</span>
+              </>
+            )}
+          </button>
+        </form>
       </div>
 
       {/* Admin Settings Panel (Naver On/Off Switch) */}
