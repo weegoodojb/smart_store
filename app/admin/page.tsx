@@ -755,8 +755,9 @@ export default function AdminDashboardPage() {
             </button>
           </div>
           <p className="leading-relaxed font-medium">{rlsErrorNotice}</p>
-          <div className="bg-white p-3 rounded-xl border border-amber-200 font-mono text-[11px] select-all text-gray-800 break-all font-semibold">
-            CREATE POLICY &quot;Allow public insert access on ss_products&quot; ON public.ss_products FOR INSERT WITH CHECK (true);
+          <div className="bg-white p-3 rounded-xl border border-amber-200 font-mono text-[11px] select-all text-gray-800 break-all font-semibold space-y-1">
+            <p>DROP POLICY IF EXISTS &quot;Allow public insert access on ss_products&quot; ON public.ss_products;</p>
+            <p>CREATE POLICY &quot;Allow public insert access on ss_products&quot; ON public.ss_products FOR INSERT WITH CHECK (true);</p>
           </div>
           <p className="text-[11px] text-amber-700">
             💡 Supabase Dashboard ➔ SQL Editor에서 위 SQL 쿼리를 1회 실행해주시면 상품 등록이 즉시 활성화됩니다.
