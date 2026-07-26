@@ -85,8 +85,14 @@ export default function AdminDashboardPage() {
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
-    setToastMessage({ type, text });
-    setTimeout(() => setToastMessage(null), 3000);
+    let cleanText = text;
+    if (typeof cleanText === "string" && (cleanText.includes("<!DOCTYPE") || cleanText.includes("<html") || cleanText.includes("404: This page"))) {
+      cleanText = "요청 처리 실패 (서버 404/500 응답 오류가 발생했습니다)";
+    } else if (typeof cleanText === "string" && cleanText.length > 180) {
+      cleanText = cleanText.slice(0, 180) + "...";
+    }
+    setToastMessage({ type, text: cleanText });
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "admin1234";
@@ -185,10 +191,23 @@ export default function AdminDashboardPage() {
         body: JSON.stringify({ coupang_url: quickLinkInput.trim() }),
       });
 
-      const json = await res.json();
-      if (!json.success || !json.data || !json.data.image_url || !json.data.name_kr) {
+      const resText = await res.text();
+      let json: any = null;
+      try {
+        if (resText.includes("<!DOCTYPE") || resText.includes("<html")) {
+          throw new Error("HTML response returned");
+        }
+        json = JSON.parse(resText);
+      } catch {
         showToast("자동 스크랩 실패: 수동 입력 폼이 표시되었습니다. 상품명, 가격, 이미지를 입력해 주세요.", "error");
-        if (json.data) {
+        setShowManualFields(true);
+        setIsQuickAdding(false);
+        return;
+      }
+
+      if (!json || !json.success || !json.data || !json.data.image_url || !json.data.name_kr) {
+        showToast("자동 스크랩 실패: 수동 입력 폼이 표시되었습니다. 상품명, 가격, 이미지를 입력해 주세요.", "error");
+        if (json && json.data) {
           if (json.data.name_kr) setManualNameKr(json.data.name_kr);
           if (json.data.coupang_price) setManualCoupangPrice(String(json.data.coupang_price));
           if (json.data.image_url) setManualImageUrl(json.data.image_url);
