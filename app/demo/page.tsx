@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { MOCK_PRODUCTS } from "@/lib/mockProducts";
 import { Product, CategoryType } from "@/lib/types";
-import { getConfig, logClick } from "@/lib/supabase";
+import { getConfig, getConfigValue, logClick } from "@/lib/supabase";
 
 const CATEGORIES: CategoryType[] = [
   "전체", 
@@ -41,8 +41,11 @@ export default function DemoPage() {
   // Multilingual state (KR / VN)
   const [lang, setLang] = useState<"KR" | "VN">("KR");
 
-  // Naver comparison On/Off state (read-only from Supabase ss_config / localStorage set by Admin)
+  // Naver comparison On/Off state
   const [showNaverProducts, setShowNaverProducts] = useState<boolean>(true);
+  
+  // Mobile Grid Cols state (1, 2, or 3)
+  const [mobileGridCols, setMobileGridCols] = useState<number>(2);
 
   // Sync with Supabase config / localStorage on mount and listen to storage events
   useEffect(() => {
@@ -50,9 +53,16 @@ export default function DemoPage() {
       setShowNaverProducts(val);
     });
 
+    getConfigValue<number>("mobile_grid_cols", 2).then((val) => {
+      setMobileGridCols(Number(val) || 2);
+    });
+
     const handleStorageChange = () => {
       getConfig("show_naver_products", true).then((val) => {
         setShowNaverProducts(val);
+      });
+      getConfigValue<number>("mobile_grid_cols", 2).then((val) => {
+        setMobileGridCols(Number(val) || 2);
       });
     };
 
@@ -279,12 +289,19 @@ export default function DemoPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className={`grid ${
+            mobileGridCols === 1
+              ? "grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              : mobileGridCols === 3
+              ? "grid-cols-3 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+              : "grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          }`}>
             {filteredProducts.map((product) => {
               const isSelected = compareItems.some((item) => item.id === product.id);
 
               const isNaverCheaper = showNaverProducts && product.naver_price ? product.naver_price < product.coupang_price : false;
               const isCoupangCheaper = !showNaverProducts || (product.naver_price ? product.coupang_price <= product.naver_price : true);
+              const isCompact = mobileGridCols === 3;
 
               return (
                 <div
@@ -304,19 +321,23 @@ export default function DemoPage() {
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       />
                       
-                      <div className="absolute top-3 left-3 flex flex-col gap-1">
+                      <div className={`absolute flex flex-col gap-1 ${
+                        isCompact ? "top-1.5 left-1.5" : "top-3 left-3"
+                      }`}>
                         {product.badge && (
-                          <span className="bg-red-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                          <span className={`bg-red-600 text-white font-bold rounded-full shadow-sm ${
+                            isCompact ? "text-[9px] px-1.5 py-0.5" : "text-[11px] px-2.5 py-1"
+                          }`}>
                             {product.badge}
                           </span>
                         )}
                         {showNaverProducts && (
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${
-                            isNaverCheaper
-                              ? "bg-emerald-600 text-white"
-                              : "bg-red-600 text-white"
+                          <span className={`font-extrabold rounded-md shadow-sm ${
+                            isCompact ? "text-[8px] px-1 py-0.5" : "text-[10px] px-2 py-0.5"
+                          } ${
+                            isNaverCheaper ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
                           }`}>
-                            {isNaverCheaper ? "🏆 네이버 최저가!" : "🏆 쿠팡 최저가!"}
+                            {isNaverCheaper ? "🏆 네이버!" : "🏆 쿠팡!"}
                           </span>
                         )}
                       </div>
@@ -324,104 +345,119 @@ export default function DemoPage() {
                       {/* Compare Checkbox Button */}
                       <button
                         onClick={() => toggleCompare(product)}
-                        className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                        className={`absolute rounded-full flex items-center justify-center transition-all ${
+                          isCompact ? "top-1.5 right-1.5 w-6 h-6" : "top-3 right-3 w-8 h-8"
+                        } ${
                           isSelected
                             ? "bg-red-600 text-white shadow-lg scale-110"
                             : "bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white shadow-sm"
                         }`}
                         title={isSelected ? "비교함에서 제거" : "비교함에 추가"}
                       >
-                        {isSelected ? <Check className="w-4 h-4 stroke-[3]" /> : <Plus className="w-4 h-4" />}
+                        {isSelected ? <Check className={`${isCompact ? "w-3 h-3" : "w-4 h-4"} stroke-[3]`} /> : <Plus className={isCompact ? "w-3 h-3" : "w-4 h-4"} />}
                       </button>
                     </div>
 
                     {/* Card Body */}
-                    <div className="p-4">
+                    <div className={isCompact ? "p-2 sm:p-4" : "p-4"}>
                       {/* Price History Trend Badge */}
-                      {product.price_history_trend && (
+                      {product.price_history_trend && !isCompact && (
                         <div className="mb-2.5 bg-amber-50 text-amber-900 text-[11px] font-bold px-2.5 py-1 rounded-lg border border-amber-200/70 flex items-center gap-1">
                           <TrendingDown className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
                           <span className="truncate">{product.price_history_trend}</span>
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                        <span className="font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                        <span className={`font-medium bg-gray-100 rounded text-gray-600 ${
+                          isCompact ? "text-[9px] px-1 py-0.5" : "text-xs px-2 py-0.5"
+                        }`}>
                           {product.category}
                         </span>
-                        {product.rating && (
-                          <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                        {product.rating && !isCompact && (
+                          <span className="flex items-center gap-1 text-amber-500 font-semibold text-xs">
                             <Star className="w-3.5 h-3.5 fill-amber-400" />
-                            {product.rating} <span className="text-gray-400 font-normal">({product.review_count?.toLocaleString()})</span>
+                            {product.rating}
                           </span>
                         )}
                       </div>
 
                       {/* Titles */}
-                      <h3 className="font-bold text-sm text-gray-900 leading-snug">
+                      <h3 className={`font-bold text-gray-900 leading-snug ${
+                        isCompact ? "text-xs line-clamp-1" : "text-sm line-clamp-2"
+                      }`}>
                         {product.name_kr}
                       </h3>
-                      <p className="text-xs text-gray-500 font-normal line-clamp-1 mt-0.5">
+                      <p className={`text-gray-500 font-normal line-clamp-1 ${
+                        isCompact ? "text-[10px] mt-0" : "text-xs mt-0.5"
+                      }`}>
                         🇻🇳 {product.name_vn}
                       </p>
 
                       {/* Price Display */}
                       {!showNaverProducts ? (
-                        <div className="my-2.5 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                          {product.original_price && (
+                        <div className={`bg-gray-50 rounded-xl border border-gray-100 ${
+                          isCompact ? "my-1.5 p-1.5" : "my-2.5 p-2.5"
+                        }`}>
+                          {product.original_price && !isCompact && (
                             <div className="flex items-center gap-1.5 text-xs text-gray-400 line-through">
                               <span>{product.original_price.toLocaleString()}원</span>
                             </div>
                           )}
                           <div className="flex items-baseline justify-between gap-1">
-                            <div className="flex items-baseline gap-1.5">
-                              {product.discount_rate && (
+                            <div className="flex items-baseline gap-1">
+                              {product.discount_rate && !isCompact && (
                                 <span className="text-base font-extrabold text-red-600">
                                   {product.discount_rate}%
                                 </span>
                               )}
-                              <span className="text-lg font-black text-gray-900">
-                                {product.coupang_price.toLocaleString()}<span className="text-xs font-normal">원</span>
+                              <span className={`font-black text-gray-900 ${
+                                isCompact ? "text-xs" : "text-lg"
+                              }`}>
+                                {product.coupang_price.toLocaleString()}<span className="text-[10px] font-normal">원</span>
                               </span>
                             </div>
-                            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold border border-emerald-100">
-                              30일최저: {product.lowest_price_30days.toLocaleString()}원
-                            </span>
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-2 text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded inline-block border border-emerald-100">
-                          30일 최저가: {product.lowest_price_30days.toLocaleString()}원
+                        <div className={`text-emerald-700 font-semibold bg-emerald-50 rounded inline-block border border-emerald-100 ${
+                          isCompact ? "mt-1 text-[9px] px-1 py-0.5" : "mt-2 text-[11px] px-2 py-0.5"
+                        }`}>
+                          30일최저: {product.lowest_price_30days.toLocaleString()}원
                         </div>
                       )}
 
-                      {/* Features */}
-                      <div className="space-y-1 pt-3 border-t border-gray-100 mt-3">
-                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                          {lang === "KR" ? "특징" : "Đặc điểm"}
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {product.features_kr.slice(0, 3).map((feat, idx) => {
-                            const featVn = product.features_vn[idx];
-                            return (
-                              <span
-                                key={idx}
-                                className="text-[11px] bg-gray-50 text-gray-700 px-2 py-0.5 rounded border border-gray-200/80"
-                              >
-                                ✓ {feat} {featVn ? <span className="text-gray-500 text-[10px]">({featVn})</span> : null}
-                              </span>
-                            );
-                          })}
+                      {/* Features Badges (Hide on 3-col compact mobile to keep super clean) */}
+                      {!isCompact && (
+                        <div className="space-y-1 pt-3 border-t border-gray-100 mt-3">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            {lang === "KR" ? "특징" : "Đặc điểm"}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {product.features_kr.slice(0, 3).map((feat, idx) => {
+                              const featVn = product.features_vn[idx];
+                              return (
+                                <span
+                                  key={idx}
+                                  className="text-[11px] bg-gray-50 text-gray-700 px-2 py-0.5 rounded border border-gray-200/80"
+                                >
+                                  ✓ {feat} {featVn ? <span className="text-gray-500 text-[10px]">({featVn})</span> : null}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Actions Section */}
-                  <div className="p-4 pt-0 space-y-2">
+                  <div className={isCompact ? "p-2 pt-0 space-y-1" : "p-4 pt-0 space-y-2"}>
                     <button
                       onClick={() => toggleCompare(product)}
-                      className={`w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 mb-2 ${
+                      className={`w-full font-bold transition-all flex items-center justify-center gap-1 ${
+                        isCompact ? "py-1 px-1.5 text-[10px] rounded-lg mb-1" : "py-2 px-3 text-xs rounded-xl mb-2"
+                      } ${
                         isSelected
                           ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -429,13 +465,13 @@ export default function DemoPage() {
                     >
                       {isSelected ? (
                         <>
-                          <Check className="w-3.5 h-3.5" />
-                          {lang === "KR" ? "비교함 담김 완료" : "Đã thêm vào so sánh"}
+                          <Check className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
+                          <span>{lang === "KR" ? "담김" : "Đã chọn"}</span>
                         </>
                       ) : (
                         <>
-                          <Plus className="w-3.5 h-3.5" />
-                          {lang === "KR" ? "비교함 담기" : "Thêm vào so sánh"}
+                          <Plus className={isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} />
+                          <span>{lang === "KR" ? "비교담기" : "So sánh"}</span>
                         </>
                       )}
                     </button>
@@ -446,21 +482,21 @@ export default function DemoPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => handleOutlinkClick(product.id, "coupang")}
-                      className={`w-full text-xs font-bold text-white transition-all flex items-center justify-between shadow-sm ${
-                        !showNaverProducts ? "py-3 px-4 rounded-xl text-sm" : "py-2.5 px-3 rounded-xl"
+                      className={`w-full font-bold text-white transition-all flex items-center justify-between shadow-sm ${
+                        isCompact ? "py-1.5 px-2 rounded-lg text-[10px]" : !showNaverProducts ? "py-3 px-4 rounded-xl text-sm" : "py-2.5 px-3 rounded-xl text-xs"
                       } ${
                         isCoupangCheaper
                           ? "bg-red-600 hover:bg-red-700 ring-2 ring-red-500/20"
                           : "bg-red-500/90 hover:bg-red-600"
                       }`}
                     >
-                      <span className="flex items-center gap-1.5">
-                        <Rocket className="w-4 h-4 text-yellow-300" />
-                        <span>{showNaverProducts ? "🚀 [쿠팡 로켓배송]" : (lang === "KR" ? "🚀 쿠팡 최저가 보러가기" : "🚀 Xem giá rẻ nhất Coupang")}</span>
+                      <span className="flex items-center gap-1 truncate">
+                        <Rocket className={isCompact ? "w-3 h-3 text-yellow-300" : "w-4 h-4 text-yellow-300"} />
+                        <span>{isCompact ? "🚀 쿠팡" : showNaverProducts ? "🚀 [쿠팡 로켓]" : (lang === "KR" ? "🚀 쿠팡 최저가 보러가기" : "🚀 Xem giá Coupang")}</span>
                       </span>
-                      <span className="font-extrabold flex items-center gap-1">
+                      <span className="font-extrabold flex items-center gap-0.5">
                         {product.coupang_price.toLocaleString()}원
-                        <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                        <ExternalLink className={isCompact ? "w-2.5 h-2.5 opacity-80" : "w-3.5 h-3.5 opacity-80"} />
                       </span>
                     </a>
 
@@ -471,17 +507,19 @@ export default function DemoPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => handleOutlinkClick(product.id, "naver")}
-                        className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-between shadow-sm ${
+                        className={`w-full font-bold text-white transition-all flex items-center justify-between shadow-sm ${
+                          isCompact ? "py-1.5 px-2 rounded-lg text-[10px]" : "py-2.5 px-3 rounded-xl text-xs"
+                        } ${
                           isNaverCheaper
                             ? "bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-500/20"
                             : "bg-emerald-600/90 hover:bg-emerald-700"
                         }`}
                       >
-                        <span className="flex items-center gap-1">
-                          <Gift className="w-3.5 h-3.5 text-yellow-300" />
-                          <span>🟢 [네이버 최저가]</span>
+                        <span className="flex items-center gap-1 truncate">
+                          <Gift className={isCompact ? "w-3 h-3 text-yellow-300" : "w-3.5 h-3.5 text-yellow-300"} />
+                          <span>{isCompact ? "🟢 네이버" : "🟢 [네이버 최저가]"}</span>
                         </span>
-                        <span className="font-extrabold flex items-center gap-1">
+                        <span className="font-extrabold flex items-center gap-0.5">
                           {product.naver_price.toLocaleString()}원
                           {product.naver_point_back && (
                             <span className="text-[10px] bg-white/20 px-1 rounded font-normal">
