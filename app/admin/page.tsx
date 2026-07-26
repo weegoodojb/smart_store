@@ -179,17 +179,13 @@ export default function AdminDashboardPage() {
       });
 
       const json = await res.json();
-      let name_kr = "쿠팡 파트너스 상품";
-      let image_url = "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=600";
-      let coupang_price = 15000;
-      let is_rocket = true;
-
-      if (json.success && json.data) {
-        if (json.data.name_kr) name_kr = json.data.name_kr;
-        if (json.data.image_url) image_url = json.data.image_url;
-        if (json.data.coupang_price) coupang_price = json.data.coupang_price;
-        if (typeof json.data.is_rocket === "boolean") is_rocket = json.data.is_rocket;
+      if (!json.success || !json.data || !json.data.image_url || !json.data.name_kr) {
+        showToast(json.error || "쿠팡 파트너스 링크 스크랩에 실패했습니다. 단축 링크를 확인해 주세요.", "error");
+        setIsQuickAdding(false);
+        return;
       }
+
+      const { name_kr, image_url, coupang_price, is_rocket } = json.data;
 
       // 2. Build product payload & save to DB
       const payload: Omit<Product, "id"> = {
