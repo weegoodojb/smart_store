@@ -357,9 +357,12 @@ export default function AdminDashboardPage() {
     <div className="space-y-6 pb-20">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-xl backdrop-blur-md text-white text-xs sm:text-sm flex items-center gap-2 transition-all ${
-          toastMessage.type === "error" ? "bg-red-600" : "bg-gray-900"
-        }`}>
+        <div
+          className={
+            "fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl shadow-xl backdrop-blur-md text-white text-xs sm:text-sm flex items-center gap-2 transition-all " +
+            (toastMessage.type === "error" ? "bg-red-600" : "bg-gray-900")
+          }
+        >
           <Info className="w-4 h-4 text-yellow-300" />
           <span>{toastMessage.text}</span>
         </div>
@@ -592,12 +595,7 @@ export default function AdminDashboardPage() {
           <div className="p-12 text-center space-y-2">
             <ShoppingBag className="w-10 h-10 text-gray-300 mx-auto" />
             <p className="text-xs text-gray-500 font-semibold">등록된 상품이 없습니다.</p>
-            <button
-              onClick={handleOpenAddModal}
-              className="text-xs text-red-600 font-bold hover:underline"
-            >
-              + 첫 번째 상품 등록하기
-            </button>
+            <p className="text-[11px] text-red-600 font-bold">상단 인라인 입력창에 쿠팡 파트너스 링크를 입력하여 즉시 등록해 주세요.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -870,6 +868,10 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
+              {/* Row 5: Feature Tags */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
                     한국어 특징 태그 (쉼표로 구분)
                   </label>
                   <input
