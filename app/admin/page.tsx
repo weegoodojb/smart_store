@@ -184,25 +184,25 @@ export default function AdminDashboardPage() {
           name_vn: d.name_vn || prev.name_vn,
           category: d.category || prev.category,
           coupang_price: d.coupang_price || prev.coupang_price,
-          naver_price: d.naver_price || prev.naver_price,
+          naver_price: d.naver_price ?? prev.naver_price,
           coupang_link: d.coupang_link || prev.coupang_link,
-          naver_link: d.naver_link || prev.naver_link,
-          naver_point_back: d.naver_point_back || prev.naver_point_back,
+          naver_link: d.naver_link ?? prev.naver_link,
+          naver_point_back: d.naver_point_back ?? prev.naver_point_back,
           image_url: d.image_url || prev.image_url,
-          lowest_price_30days: d.lowest_price_30days || prev.lowest_price_30days,
-          price_history_trend: d.price_history_trend || prev.price_history_trend,
-          badge: d.badge || prev.badge,
+          lowest_price_30days: d.lowest_price_30days ?? prev.lowest_price_30days,
+          price_history_trend: d.price_history_trend ?? prev.price_history_trend,
+          badge: d.badge ?? prev.badge,
           is_rocket: typeof d.is_rocket === "boolean" ? d.is_rocket : prev.is_rocket,
           features_kr_str: Array.isArray(d.features_kr) ? d.features_kr.join(", ") : prev.features_kr_str,
           features_vn_str: Array.isArray(d.features_vn) ? d.features_vn.join(", ") : prev.features_vn_str,
         }));
-        showToast("✨ AI가 쿠팡 메타데이터 및 베트남어 번역을 성공적으로 자동 채웠습니다!");
+        showToast("✨ 쿠팡 메타데이터(상품명, 이미지, 가격, 로켓배송)를 성공적으로 스크랩했습니다!");
       } else {
-        showToast(json.error || "AI 자동 채우기에 실패했습니다.", "error");
+        showToast(json.error || "쿠팡 정보 스크랩에 실패했습니다.", "error");
       }
     } catch (err) {
       console.error("Auto fill request error:", err);
-      showToast("AI 자동 채우기 서버 요청 중 오류가 발생했습니다.", "error");
+      showToast("쿠팡 정보 스크랩 중 서버 오류가 발생했습니다.", "error");
     } finally {
       setIsAutoFilling(false);
     }
@@ -719,14 +719,14 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 font-extrabold text-gray-900 text-xs">
                     <Wand2 className="w-4 h-4 text-red-600 animate-pulse" />
-                    <span>쿠팡 링크로 AI 자동 채우기</span>
+                    <span>쿠팡 링크 메타데이터 자동 스크랩</span>
                   </div>
                   <span className="text-[10px] bg-red-600 text-white font-bold px-2 py-0.5 rounded-full shadow-sm">
-                    Gemini AI Powered
+                    OpenGraph Scraper
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-600">
-                  쿠팡 파트너스 단축 링크를 입력하고 [AI 자동 채우기]를 누르면 상품명, 이미지, 베트남어 번역, 네이버 최저가 및 특징 태그가 자동 입력됩니다.
+                  쿠팡 단축 링크를 입력하고 [정보 스크랩]을 누르면 기본 메타데이터(상품명, 이미지, 쿠팡 가격, 로켓배송 여부)가 자동 입력됩니다.
                 </p>
                 <div className="flex items-center gap-2 pt-1">
                   <input
@@ -745,12 +745,12 @@ export default function AdminDashboardPage() {
                     {isAutoFilling ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin text-yellow-300" />
-                        <span>AI 분석 중...</span>
+                        <span>스크랩 중...</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 text-yellow-300" />
-                        <span>AI 자동 채우기</span>
+                        <span>정보 스크랩</span>
                       </>
                     )}
                   </button>
@@ -773,12 +773,11 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">
-                    베트남어 상품명 (name_vn) <span className="text-red-500">*</span>
+                    베트남어 상품명 (name_vn) <span className="text-gray-400 font-normal">(선택)</span>
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="예: Bộ gia vị Phở Bibigo"
+                    placeholder="미입력 시 국문 상품명이 대신 표시됩니다"
                     value={formState.name_vn}
                     onChange={(e) => setFormState({ ...formState, name_vn: e.target.value })}
                     className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"

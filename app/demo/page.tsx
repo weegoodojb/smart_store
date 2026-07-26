@@ -299,9 +299,16 @@ export default function DemoPage() {
             {filteredProducts.map((product) => {
               const isSelected = compareItems.some((item) => item.id === product.id);
 
-              const isNaverCheaper = showNaverProducts && product.naver_price ? product.naver_price < product.coupang_price : false;
-              const isCoupangCheaper = !showNaverProducts || (product.naver_price ? product.coupang_price <= product.naver_price : true);
+              // Naver Info Conditional Check (requires both naver_link and positive naver_price)
+              const hasNaverInfo = Boolean(product.naver_link && product.naver_price && product.naver_price > 0);
+              const isNaverActive = showNaverProducts && hasNaverInfo;
+
+              const isNaverCheaper = isNaverActive ? (product.naver_price! < product.coupang_price) : false;
+              const isCoupangCheaper = !isNaverActive || (product.naver_price ? product.coupang_price <= product.naver_price : true);
               const isCompact = mobileGridCols === 3;
+
+              // Vietnamese Title Fallback to Korean Title if empty
+              const nameVnDisplay = product.name_vn && product.name_vn.trim() ? product.name_vn : product.name_kr;
 
               return (
                 <div
@@ -331,7 +338,7 @@ export default function DemoPage() {
                             {product.badge}
                           </span>
                         )}
-                        {showNaverProducts && (
+                        {isNaverActive && (
                           <span className={`font-extrabold rounded-md shadow-sm ${
                             isCompact ? "text-[8px] px-1 py-0.5" : "text-[10px] px-2 py-0.5"
                           } ${
@@ -391,11 +398,11 @@ export default function DemoPage() {
                       <p className={`text-gray-500 font-normal line-clamp-1 ${
                         isCompact ? "text-[10px] mt-0" : "text-xs mt-0.5"
                       }`}>
-                        🇻🇳 {product.name_vn}
+                        🇻🇳 {nameVnDisplay}
                       </p>
 
                       {/* Price Display */}
-                      {!showNaverProducts ? (
+                      {!isNaverActive ? (
                         <div className={`bg-gray-50 rounded-xl border border-gray-100 ${
                           isCompact ? "my-1.5 p-1.5" : "my-2.5 p-2.5"
                         }`}>
@@ -427,15 +434,15 @@ export default function DemoPage() {
                         </div>
                       )}
 
-                      {/* Features Badges (Hide on 3-col compact mobile to keep super clean) */}
-                      {!isCompact && (
+                      {/* Features Badges */}
+                      {!isCompact && (product.features_kr?.length || 0) > 0 && (
                         <div className="space-y-1 pt-3 border-t border-gray-100 mt-3">
                           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                             {lang === "KR" ? "특징" : "Đặc điểm"}
                           </p>
                           <div className="flex flex-wrap gap-1">
                             {product.features_kr.slice(0, 3).map((feat, idx) => {
-                              const featVn = product.features_vn[idx];
+                              const featVn = product.features_vn?.[idx];
                               return (
                                 <span
                                   key={idx}
@@ -483,7 +490,7 @@ export default function DemoPage() {
                       rel="noopener noreferrer"
                       onClick={() => handleOutlinkClick(product.id, "coupang")}
                       className={`w-full font-bold text-white transition-all flex items-center justify-between shadow-sm ${
-                        isCompact ? "py-1.5 px-2 rounded-lg text-[10px]" : !showNaverProducts ? "py-3 px-4 rounded-xl text-sm" : "py-2.5 px-3 rounded-xl text-xs"
+                        isCompact ? "py-1.5 px-2 rounded-lg text-[10px]" : !isNaverActive ? "py-3 px-4 rounded-xl text-sm" : "py-2.5 px-3 rounded-xl text-xs"
                       } ${
                         isCoupangCheaper
                           ? "bg-red-600 hover:bg-red-700 ring-2 ring-red-500/20"
@@ -492,7 +499,7 @@ export default function DemoPage() {
                     >
                       <span className="flex items-center gap-1 truncate">
                         <Rocket className={isCompact ? "w-3 h-3 text-yellow-300" : "w-4 h-4 text-yellow-300"} />
-                        <span>{isCompact ? "🚀 쿠팡" : showNaverProducts ? "🚀 [쿠팡 로켓]" : (lang === "KR" ? "🚀 쿠팡 최저가 보러가기" : "🚀 Xem giá Coupang")}</span>
+                        <span>{isCompact ? "🚀 쿠팡" : isNaverActive ? "🚀 [쿠팡 로켓]" : (lang === "KR" ? "🚀 쿠팡 최저가 보러가기" : "🚀 Xem giá Coupang")}</span>
                       </span>
                       <span className="font-extrabold flex items-center gap-0.5">
                         {product.coupang_price.toLocaleString()}원
@@ -500,8 +507,8 @@ export default function DemoPage() {
                       </span>
                     </a>
 
-                    {/* Naver Button */}
-                    {showNaverProducts && product.naver_price && (
+                    {/* Naver Button (Only rendered if isNaverActive) */}
+                    {isNaverActive && product.naver_price && (
                       <a
                         href={product.naver_link}
                         target="_blank"
@@ -526,7 +533,7 @@ export default function DemoPage() {
                               +{product.naver_point_back}p
                             </span>
                           )}
-                          <ExternalLink className="w-3 h-3 opacity-80" />
+                          <ExternalLink className={isCompact ? "w-2.5 h-2.5 opacity-80" : "w-3 h-3 opacity-80"} />
                         </span>
                       </a>
                     )}
