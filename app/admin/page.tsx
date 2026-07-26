@@ -195,8 +195,8 @@ export default function AdminDashboardPage() {
       price_history_trend: prod.price_history_trend ?? "",
       badge: prod.badge ?? "",
       is_rocket: prod.is_rocket ?? true,
-      features_kr_str: (prod.features_kr || prod.features || []).join(", "),
-      features_vn_str: (prod.features_vn || []).join(", "),
+      features_kr_str: Array.isArray(prod.features_kr) ? prod.features_kr.join(", ") : "",
+      features_vn_str: Array.isArray(prod.features_vn) ? prod.features_vn.join(", ") : "",
     });
     setIsFormModalOpen(true);
   };
