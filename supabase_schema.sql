@@ -1,5 +1,5 @@
 -- ================================================================
--- PickViet (픽비엣) Supabase Database Schema DDL & Seed Data (Phase 5.0)
+-- PickViet (픽비엣) Supabase Database Schema DDL & RLS Policies (Phase 5.0)
 -- Repository: weegoodojb/smart_store
 -- Table Prefix: ss_ (ss_products, ss_config, ss_clicks)
 -- ================================================================
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.ss_products (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Create ss_config Table (Global App Settings e.g. show_naver_products)
+-- 2. Create ss_config Table (Global App Settings e.g. show_naver_products, mobile_grid_cols)
 CREATE TABLE IF NOT EXISTS public.ss_config (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
@@ -44,30 +44,37 @@ ALTER TABLE public.ss_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ss_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ss_clicks ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public read access on ss_products" ON public.ss_products FOR SELECT USING (true);
-CREATE POLICY "Allow public read access on ss_config" ON public.ss_config FOR SELECT USING (true);
+-- 4.1 ss_products RLS Policies (SELECT, INSERT, UPDATE, DELETE)
+DROP POLICY IF EXISTS "Allow public read access on ss_products" ON public.ss_products;
+DROP POLICY IF EXISTS "Allow public select access on ss_products" ON public.ss_products;
+DROP POLICY IF EXISTS "Allow public insert access on ss_products" ON public.ss_products;
+DROP POLICY IF EXISTS "Allow public update access on ss_products" ON public.ss_products;
+DROP POLICY IF EXISTS "Allow public delete access on ss_products" ON public.ss_products;
+
+CREATE POLICY "Allow public select access on ss_products" ON public.ss_products FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access on ss_products" ON public.ss_products FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access on ss_products" ON public.ss_products FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete access on ss_products" ON public.ss_products FOR DELETE USING (true);
+
+-- 4.2 ss_config RLS Policies
+DROP POLICY IF EXISTS "Allow public read access on ss_config" ON public.ss_config;
+DROP POLICY IF EXISTS "Allow public select access on ss_config" ON public.ss_config;
+DROP POLICY IF EXISTS "Allow public insert access on ss_config" ON public.ss_config;
+DROP POLICY IF EXISTS "Allow public update access on ss_config" ON public.ss_config;
+
+CREATE POLICY "Allow public select access on ss_config" ON public.ss_config FOR SELECT USING (true);
+CREATE POLICY "Allow public insert access on ss_config" ON public.ss_config FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update access on ss_config" ON public.ss_config FOR UPDATE USING (true);
+
+-- 4.3 ss_clicks RLS Policies
+DROP POLICY IF EXISTS "Allow public insert access on ss_clicks" ON public.ss_clicks;
 CREATE POLICY "Allow public insert access on ss_clicks" ON public.ss_clicks FOR INSERT WITH CHECK (true);
 
--- 5. Insert Initial Config
+-- 5. Insert Initial Config Defaults
 INSERT INTO public.ss_config (key, value)
 VALUES ('show_naver_products', 'true'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
--- 6. Insert Initial Seed Sample Data (PickViet G7 Coffee)
-INSERT INTO public.ss_products (
-  name_kr, name_vn, category, 
-  coupang_price, coupang_link, is_rocket, 
-  naver_price, naver_link, naver_point_back, 
-  lowest_price_30days, price_history_trend, 
-  features_kr, features_vn, image_url
-) VALUES (
-  'G7 블랙 커피 200g (100포)', 
-  'Cà phê đen G7 Gu mạnh (100 gói)', 
-  '식자재',
-  12500, 'https://link.coupang.com/a/fG7gl6twuO', true,
-  12100, 'https://search.shopping.naver.com', 360,
-  12500, 'lowest',
-  ARRAY['무료배송', '베트남 진한 원두', '당일발송'],
-  ARRAY['Miễn phí vận chuyển', 'Hương vị đậm đà', 'Giao hàng trong ngày'],
-  'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?q=80&w=400'
-);
+INSERT INTO public.ss_config (key, value)
+VALUES ('mobile_grid_cols', '2'::jsonb)
+ON CONFLICT (key) DO NOTHING;

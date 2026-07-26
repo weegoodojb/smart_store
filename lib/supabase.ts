@@ -1,11 +1,18 @@
 import { Product } from "./types";
 
-// Supabase Environment variables
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+// Supabase Environment variables with default fallbacks
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dhurxwwfzyyfufswyltn.supabase.co";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_5syLiQrKtutpuej94j7vjw_7L1OdrW6";
+
+export interface SupabaseOperationResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  code?: string;
+}
 
 /**
- * Fetch products directly from Supabase ss_products table (No LocalStorage fallback)
+ * Fetch products directly from Supabase ss_products table
  */
 export async function getProducts(): Promise<Product[]> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -39,15 +46,15 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 /**
- * Create a new product directly in Supabase ss_products table (No LocalStorage fallback)
+ * Create a new product directly in Supabase ss_products table
  */
-export async function createProduct(productData: Omit<Product, "id"> & { id?: string }): Promise<Product | null> {
+export async function createProductWithStatus(
+  productData: Omit<Product, "id"> & { id?: string }
+): Promise<SupabaseOperationResult<Product>> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error("Supabase credentials missing.");
-    return null;
+    return { success: false, error: "Supabase 인증 정보(URL/KEY)가 설정되지 않았습니다." };
   }
 
-  // Omit custom non-UUID id if empty or auto-generated so Supabase UUID column works
   const { id, ...rest } = productData;
   const bodyPayload = (id && id.includes("-") && id.length === 36) ? { id, ...rest } : rest;
 
@@ -63,22 +70,50 @@ export async function createProduct(productData: Omit<Product, "id"> & { id?: st
       body: JSON.stringify(bodyPayload),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      return (Array.isArray(data) && data.length > 0 ? data[0] : null) as Product | null;
-    } else {
-      const errText = await res.text();
-      console.error("Failed to insert product into Supabase ss_products:", errText);
-      return null;
+    const resText = await res.text();
+    let json: any = null;
+    try {
+      json = JSON.parse(resText);
+    } catch {
+      // ignore JSON parse error
     }
-  } catch (err) {
+
+    if (res.ok) {
+      const inserted = Array.isArray(json) && json.length > 0 ? json[0] : json;
+      return { success: true, data: inserted as Product };
+    } else {
+      const errCode = json?.code || "";
+      const errMsg = json?.message || resText || "Supabase DB 저장 실패";
+      console.error(`[Supabase INSERT Error ${res.status}] Code: ${errCode}`, errMsg);
+
+      if (errCode === "42501" || errMsg.includes("row-level security")) {
+        return {
+          success: false,
+          code: "42501",
+          error: "Supabase RLS(행 수준 보안) 정책 차단: ss_products 테이블의 INSERT 권한 허용 SQL을 실행해 주세요.",
+        };
+      }
+
+      return { success: false, code: errCode, error: errMsg };
+    }
+  } catch (err: any) {
     console.error("Error inserting product into Supabase:", err);
-    return null;
+    return { success: false, error: err?.message || "네트워크 통신 오류가 발생했습니다." };
   }
 }
 
 /**
- * Update an existing product directly in Supabase ss_products table (No LocalStorage fallback)
+ * Backward-compatible wrapper for createProduct
+ */
+export async function createProduct(
+  productData: Omit<Product, "id"> & { id?: string }
+): Promise<Product | null> {
+  const result = await createProductWithStatus(productData);
+  return result.success && result.data ? result.data : null;
+}
+
+/**
+ * Update an existing product directly in Supabase ss_products table
  */
 export async function updateProduct(id: string, productData: Partial<Product>): Promise<boolean> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -111,7 +146,7 @@ export async function updateProduct(id: string, productData: Partial<Product>): 
 }
 
 /**
- * Delete a product directly from Supabase ss_products table (No LocalStorage fallback)
+ * Delete a product directly from Supabase ss_products table
  */
 export async function deleteProduct(id: string): Promise<boolean> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -156,7 +191,7 @@ export async function updateConfig(key: string, value: boolean): Promise<void> {
 }
 
 /**
- * Generic Fetch global config value from Supabase ss_config table (No LocalStorage fallback)
+ * Generic Fetch global config value from Supabase ss_config table
  */
 export async function getConfigValue<T>(key: string, defaultValue: T): Promise<T> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -187,7 +222,7 @@ export async function getConfigValue<T>(key: string, defaultValue: T): Promise<T
 }
 
 /**
- * Generic Update global config value in Supabase ss_config table (No LocalStorage fallback)
+ * Generic Update global config value in Supabase ss_config table
  */
 export async function updateConfigValue<T>(key: string, value: T): Promise<void> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

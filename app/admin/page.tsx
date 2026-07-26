@@ -6,6 +6,7 @@ import { Product, CategoryType } from "@/lib/types";
 import { 
   getProducts, 
   createProduct, 
+  createProductWithStatus,
   updateProduct, 
   deleteProduct, 
   getConfig, 
@@ -213,8 +214,8 @@ export default function AdminDashboardPage() {
         features_vn: [],
       };
 
-      const created = await createProduct(payload);
-      if (created) {
+      const dbRes = await createProductWithStatus(payload);
+      if (dbRes.success && dbRes.data) {
         showToast(`🚀 '${payload.name_kr}' 상품이 성공적으로 등록되었습니다!`);
         setQuickLinkInput("");
         setShowManualFields(false);
@@ -223,9 +224,9 @@ export default function AdminDashboardPage() {
         setManualImageUrl("");
         loadProducts();
       } else {
-        showToast("상품 등록 중 오류가 발생했습니다.", "error");
+        showToast(dbRes.error || "상품 등록 중 오류가 발생했습니다.", "error");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Inline quick add error:", err);
       showToast("스크랩 실패: 수동 입력 폼이 표시됩니다.", "error");
       setShowManualFields(true);
@@ -263,8 +264,8 @@ export default function AdminDashboardPage() {
       features_vn: [],
     };
 
-    const created = await createProduct(payload);
-    if (created) {
+    const res = await createProductWithStatus(payload);
+    if (res.success && res.data) {
       showToast(`🚀 '${payload.name_kr}' 상품이 수동으로 성공적으로 등록되었습니다!`);
       setQuickLinkInput("");
       setManualNameKr("");
@@ -273,7 +274,7 @@ export default function AdminDashboardPage() {
       setShowManualFields(false);
       loadProducts();
     } else {
-      showToast("상품 저장 중 오류가 발생했습니다.", "error");
+      showToast(res.error || "상품 저장 중 오류가 발생했습니다.", "error");
     }
   };
 
