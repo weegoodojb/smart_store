@@ -372,7 +372,7 @@ export default function AdminDashboardPage() {
             <span>PickViet (픽비엣) 관리자 센터</span>
             <span className="text-xs font-bold bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100">CRUD Pro</span>
           </h1>
-          <p className="text-xs text-gray-500">Supabase `ss_products` 실시간 상품 추가/수정/삭제 및 노출 제어 대시보드입니다.</p>
+          <p className="text-xs text-gray-500">Supabase ss_products 실시간 상품 추가/수정/삭제 및 노출 제어 대시보드입니다.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -551,14 +551,14 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
           <span className="text-xs font-semibold text-gray-400">등록된 상품 수</span>
           <p className="text-2xl font-black text-gray-900 mt-1">{products.length}개</p>
-          <span className="text-[11px] text-emerald-600 font-medium">Supabase `ss_products` 실시간 연동</span>
+          <span className="text-[11px] text-emerald-600 font-medium">Supabase ss_products 실시간 연동</span>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
           <span className="text-xs font-semibold text-gray-400">활성 제휴 모드</span>
           <p className={`text-xl font-extrabold mt-1 ${showNaverProducts ? "text-emerald-600" : "text-red-600"}`}>
             {showNaverProducts ? "쿠팡 & 네이버 듀얼" : "쿠팡 파트너스 단독"}
           </p>
-          <span className="text-[11px] text-gray-400 font-medium">`ss_config` 연동 상태</span>
+          <span className="text-[11px] text-gray-400 font-medium">ss_config 연동 상태</span>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
           <span className="text-xs font-semibold text-gray-400">공정위 대가성 고지 문구</span>
