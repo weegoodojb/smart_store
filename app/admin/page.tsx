@@ -245,10 +245,6 @@ export default function AdminDashboardPage() {
     });
   };
 
-  // Submit Add or Edit Form
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
   // Submit Edit Form
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
