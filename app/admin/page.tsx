@@ -58,7 +58,6 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Modal States
-  const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
 
@@ -273,38 +272,9 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Advanced Edit Toggle State
-  const [showAdvancedEdit, setShowAdvancedEdit] = useState<boolean>(false);
-
-  // Advanced Edit Toggle State
-  // Open Form Modal for Create (1-Click Mode)
-  const handleOpenAddModal = () => {
-    setEditingProduct(null);
-    setShowAdvancedEdit(false);
-    setFormState({
-      name_kr: "",
-      name_vn: "",
-      category: "🇻🇳 베트남 식자재/생필품",
-      coupang_price: 0,
-      naver_price: 0,
-      coupang_link: "",
-      naver_link: "",
-      naver_point_back: 0,
-      image_url: "",
-      lowest_price_30days: 0,
-      price_history_trend: "",
-      badge: "",
-      is_rocket: true,
-      features_kr_str: "",
-      features_vn_str: "",
-    });
-    setIsFormModalOpen(true);
-  };
-
   // Open Form Modal for Edit
   const handleOpenEditModal = (prod: Product) => {
     setEditingProduct(prod);
-    setShowAdvancedEdit(true);
     setFormState({
       name_kr: prod.name_kr ?? (prod as unknown as { name?: string }).name ?? "",
       name_vn: prod.name_vn ?? "",
@@ -322,7 +292,6 @@ export default function AdminDashboardPage() {
       features_kr_str: Array.isArray(prod.features_kr) ? prod.features_kr.join(", ") : "",
       features_vn_str: Array.isArray(prod.features_vn) ? prod.features_vn.join(", ") : "",
     });
-    setIsFormModalOpen(true);
   };
 
   // Submit Add or Edit Form
@@ -398,7 +367,7 @@ export default function AdminDashboardPage() {
       const success = await updateProduct(editingProduct.id, payload);
       if (success) {
         showToast(`'${payload.name_kr}' 상품 정보가 수정되었습니다.`);
-        setIsFormModalOpen(false);
+        setEditingProduct(null);
         loadProducts();
       } else {
         showToast("상품 수정 중 오류가 발생했습니다.", "error");
@@ -845,18 +814,18 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* Product Add / Edit Modal (Form) */}
-      {isFormModalOpen && (
+      {/* Product Edit Modal (Appears ONLY when editing existing product) */}
+      {editingProduct && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 border-b border-gray-200 flex items-center justify-between bg-gray-50">
               <h3 className="font-extrabold text-base sm:text-lg text-gray-900 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-red-600" />
-                {editingProduct ? "상품 정보 수정 (Update)" : "신규 상품 추가 (Create)"}
+                <Pencil className="w-5 h-5 text-red-600" />
+                <span>상품 정보 수정 (Edit Product)</span>
               </h3>
               <button
-                onClick={() => setIsFormModalOpen(false)}
+                onClick={() => setEditingProduct(null)}
                 className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -865,191 +834,79 @@ export default function AdminDashboardPage() {
 
             {/* Modal Form Body */}
             <form onSubmit={handleFormSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-              {!editingProduct ? (
-                /* Ultra-simplified 1-Click Coupang Product Register UI */
-                <div className="space-y-4">
-                  <div className="bg-red-50 p-4 rounded-2xl border border-red-100 space-y-1.5 text-center">
-                    <h4 className="font-extrabold text-sm text-red-700 flex items-center justify-center gap-1.5">
-                      <Rocket className="w-4 h-4 text-red-600" />
-                      <span>쿠팡 파트너스 링크 1초 간편 등록</span>
-                    </h4>
-                    <p className="text-[11px] text-red-600/80 leading-relaxed">
-                      쿠팡 단축 링크를 붙여넣고 [즉시 등록하기]를 누르면 메타데이터(상품명, 이미지, 가격, 로켓배송 여부)가 자동 추출되어 즉시 등록됩니다.
-                    </p>
-                  </div>
-
-                  {/* Input 1: Coupang Link */}
-                  <div>
-                    <label className="block font-bold text-gray-800 text-xs mb-1.5">
-                      쿠팡 파트너스 단축 링크 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      placeholder="https://link.coupang.com/a/..."
-                      value={formState.coupang_link}
-                      onChange={(e) => setFormState({ ...formState, coupang_link: e.target.value })}
-                      className="w-full p-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white text-xs font-medium transition-all shadow-inner"
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Input 2: Category */}
-                  <div>
-                    <label className="block font-bold text-gray-800 text-xs mb-1.5">
-                      카테고리 선택
-                    </label>
-                    <select
-                      value={formState.category}
-                      onChange={(e) => setFormState({ ...formState, category: e.target.value as CategoryType })}
-                      className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white text-xs font-semibold"
-                    >
-                      {CATEGORY_OPTIONS.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Optional Advanced Fields Toggle */}
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedEdit(!showAdvancedEdit)}
-                      className="text-xs text-gray-500 hover:text-gray-900 font-semibold underline flex items-center gap-1"
-                    >
-                      <span>{showAdvancedEdit ? "▲ 세부 수동 입력창 닫기" : "▼ 상품명/가격 등 직접 수동 입력하기 (선택)"}</span>
-                    </button>
-                  </div>
-
-                  {showAdvancedEdit && (
-                    <div className="pt-3 border-t border-gray-200 space-y-3">
-                      <div>
-                        <label className="block font-bold text-gray-700 mb-1">국문 상품명 (직접 지정 시)</label>
-                        <input
-                          type="text"
-                          placeholder="미입력 시 스크랩된 상품명이 자동 적용됩니다"
-                          value={formState.name_kr}
-                          onChange={(e) => setFormState({ ...formState, name_kr: e.target.value })}
-                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-gray-700 mb-1">베트남어 상품명 (선택)</label>
-                        <input
-                          type="text"
-                          placeholder="미입력 시 국문 상품명이 자동 적용됩니다"
-                          value={formState.name_vn}
-                          onChange={(e) => setFormState({ ...formState, name_vn: e.target.value })}
-                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block font-bold text-gray-700 mb-1">쿠팡 판매가 (원)</label>
-                          <input
-                            type="number"
-                            placeholder="미입력 시 자동 추출"
-                            value={formState.coupang_price || ""}
-                            onChange={(e) => setFormState({ ...formState, coupang_price: Number(e.target.value) })}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl"
-                          />
-                        </div>
-                        <div>
-                          <label className="block font-bold text-gray-700 mb-1">네이버 최저가 (선택)</label>
-                          <input
-                            type="number"
-                            placeholder="선택 입력"
-                            value={formState.naver_price || ""}
-                            onChange={(e) => setFormState({ ...formState, naver_price: Number(e.target.value) })}
-                            className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              {/* Row 1: Names */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    국문 상품명 (name_kr)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 비비고 베트남 쌀국수 세트"
+                    value={formState.name_kr}
+                    onChange={(e) => setFormState({ ...formState, name_kr: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
+                  />
                 </div>
-              ) : (
-                /* Full Edit Mode for Existing Products */
-                <div className="space-y-4">
-                  {/* Row 1: Names */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-bold text-gray-700 mb-1">
-                        국문 상품명 (name_kr) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="예: 비비고 베트남 쌀국수 세트"
-                        value={formState.name_kr}
-                        onChange={(e) => setFormState({ ...formState, name_kr: e.target.value })}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-gray-700 mb-1">
-                        베트남어 상품명 (name_vn) <span className="text-gray-400 font-normal">(선택)</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="미입력 시 국문 상품명이 대신 표시됩니다"
-                        value={formState.name_vn}
-                        onChange={(e) => setFormState({ ...formState, name_vn: e.target.value })}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Row 2: Category & Rocket Switch */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-bold text-gray-700 mb-1">
-                        카테고리 선택 <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formState.category}
-                        onChange={(e) => setFormState({ ...formState, category: e.target.value as CategoryType })}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all font-semibold"
-                      >
-                        {CATEGORY_OPTIONS.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-gray-700 mb-1">
-                        로켓배송 여부 (is_rocket)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setFormState({ ...formState, is_rocket: !formState.is_rocket })}
-                        className={`w-full p-2.5 rounded-xl font-extrabold flex items-center justify-center gap-2 border transition-all ${
-                          formState.is_rocket
-                            ? "bg-red-50 text-red-600 border-red-200"
-                            : "bg-gray-100 text-gray-500 border-gray-200"
-                        }`}
-                      >
-                        <Rocket className="w-4 h-4" />
-                        <span>{formState.is_rocket ? "🚀 로켓배송 적용중" : "일반 배송"}</span>
-                      </button>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    베트남어 상품명 (name_vn) <span className="text-gray-400 font-normal">(선택)</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="미입력 시 국문 상품명이 대신 표시됩니다"
+                    value={formState.name_vn}
+                    onChange={(e) => setFormState({ ...formState, name_vn: e.target.value })}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
+                  />
                 </div>
-              )}
+              </div>
+
+              {/* Row 2: Category & Rocket Switch */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    카테고리 선택
+                  </label>
+                  <select
+                    value={formState.category}
+                    onChange={(e) => setFormState({ ...formState, category: e.target.value as CategoryType })}
+                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all font-semibold"
+                  >
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 mb-1">
+                    로켓배송 여부 (is_rocket)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormState({ ...formState, is_rocket: !formState.is_rocket })}
+                    className={`w-full p-2.5 rounded-xl font-extrabold flex items-center justify-center gap-2 border transition-all ${
+                      formState.is_rocket
+                        ? "bg-red-50 text-red-600 border-red-200"
+                        : "bg-gray-100 text-gray-500 border-gray-200"
+                    }`}
+                  >
+                    <Rocket className="w-4 h-4" />
+                    <span>{formState.is_rocket ? "🚀 로켓배송 적용중" : "일반 배송"}</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Row 3: Prices */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">
-                    쿠팡 판매가 (원) <span className="text-red-500">*</span>
+                    쿠팡 판매가 (원)
                   </label>
                   <input
                     type="number"
-                    required
                     placeholder="18900"
                     value={formState.coupang_price || ""}
                     onChange={(e) => setFormState({ ...formState, coupang_price: Number(e.target.value) })}
@@ -1086,11 +943,10 @@ export default function AdminDashboardPage() {
               <div className="space-y-3">
                 <div>
                   <label className="block font-bold text-gray-700 mb-1">
-                    쿠팡 파트너스 단축 링크 <span className="text-red-500">*</span>
+                    쿠팡 파트너스 단축 링크
                   </label>
                   <input
                     type="url"
-                    required
                     placeholder="https://link.coupang.com/a/..."
                     value={formState.coupang_link}
                     onChange={(e) => setFormState({ ...formState, coupang_link: e.target.value })}
@@ -1111,66 +967,6 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Row 5: Image & Badges */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
-                    상품 이미지 URL
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    value={formState.image_url}
-                    onChange={(e) => setFormState({ ...formState, image_url: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
-                    추천 뱃지 (badge)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="예: 베트남 인기 1위, 🎁 Tết 선물"
-                    value={formState.badge}
-                    onChange={(e) => setFormState({ ...formState, badge: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Row 6: 30-Day Trend */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
-                    30일 최저가 금액 (원)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="17500"
-                    value={formState.lowest_price_30days || ""}
-                    onChange={(e) => setFormState({ ...formState, lowest_price_30days: Number(e.target.value) })}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
-                    가격 트렌드 문구 (price_history_trend)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="예: 🔥 지난달 대비 21% 할인"
-                    value={formState.price_history_trend}
-                    onChange={(e) => setFormState({ ...formState, price_history_trend: e.target.value })}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Row 7: Feature Tags */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
                     한국어 특징 태그 (쉼표로 구분)
                   </label>
                   <input
