@@ -161,6 +161,12 @@ export default function AdminDashboardPage() {
   const [quickCategory, setQuickCategory] = useState<CategoryType>("🇻🇳 베트남 식자재/생필품");
   const [isQuickAdding, setIsQuickAdding] = useState<boolean>(false);
 
+  // Fallback Manual Input States
+  const [showManualFields, setShowManualFields] = useState<boolean>(false);
+  const [manualNameKr, setManualNameKr] = useState<string>("");
+  const [manualCoupangPrice, setManualCoupangPrice] = useState<string>("");
+  const [manualImageUrl, setManualImageUrl] = useState<string>("");
+
   // Quick Inline Add Handler (NO Popup Modal Required!)
   const handleInlineQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,7 +186,13 @@ export default function AdminDashboardPage() {
 
       const json = await res.json();
       if (!json.success || !json.data || !json.data.image_url || !json.data.name_kr) {
-        showToast(json.error || "쿠팡 파트너스 링크 스크랩에 실패했습니다. 단축 링크를 확인해 주세요.", "error");
+        showToast("자동 스크랩 실패: 수동 입력 폼이 표시되었습니다. 상품명, 가격, 이미지를 입력해 주세요.", "error");
+        if (json.data) {
+          if (json.data.name_kr) setManualNameKr(json.data.name_kr);
+          if (json.data.coupang_price) setManualCoupangPrice(String(json.data.coupang_price));
+          if (json.data.image_url) setManualImageUrl(json.data.image_url);
+        }
+        setShowManualFields(true);
         setIsQuickAdding(false);
         return;
       }
@@ -196,7 +208,7 @@ export default function AdminDashboardPage() {
         coupang_link: quickLinkInput.trim(),
         image_url,
         lowest_price_30days: coupang_price,
-        is_rocket,
+        is_rocket: typeof is_rocket === "boolean" ? is_rocket : true,
         features_kr: [],
         features_vn: [],
       };
@@ -205,15 +217,63 @@ export default function AdminDashboardPage() {
       if (created) {
         showToast(`🚀 '${payload.name_kr}' 상품이 성공적으로 등록되었습니다!`);
         setQuickLinkInput("");
+        setShowManualFields(false);
+        setManualNameKr("");
+        setManualCoupangPrice("");
+        setManualImageUrl("");
         loadProducts();
       } else {
         showToast("상품 등록 중 오류가 발생했습니다.", "error");
       }
     } catch (err) {
       console.error("Inline quick add error:", err);
-      showToast("상품 등록 중 서버 오류가 발생했습니다.", "error");
+      showToast("스크랩 실패: 수동 입력 폼이 표시됩니다.", "error");
+      setShowManualFields(true);
     } finally {
       setIsQuickAdding(false);
+    }
+  };
+
+  // Manual Save Handler
+  const handleManualSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualNameKr.trim()) {
+      showToast("상품명을 입력해 주세요.", "error");
+      return;
+    }
+    if (!manualCoupangPrice || Number(manualCoupangPrice) <= 0) {
+      showToast("쿠팡 판매가를 정확히 입력해 주세요.", "error");
+      return;
+    }
+    if (!manualImageUrl.trim()) {
+      showToast("상품 이미지 URL을 입력해 주세요.", "error");
+      return;
+    }
+
+    const payload: Omit<Product, "id"> = {
+      name_kr: manualNameKr.trim(),
+      name_vn: manualNameKr.trim(),
+      category: quickCategory,
+      coupang_price: Number(manualCoupangPrice),
+      coupang_link: quickLinkInput.trim() || "https://link.coupang.com",
+      image_url: manualImageUrl.trim(),
+      lowest_price_30days: Number(manualCoupangPrice),
+      is_rocket: true,
+      features_kr: [],
+      features_vn: [],
+    };
+
+    const created = await createProduct(payload);
+    if (created) {
+      showToast(`🚀 '${payload.name_kr}' 상품이 수동으로 성공적으로 등록되었습니다!`);
+      setQuickLinkInput("");
+      setManualNameKr("");
+      setManualCoupangPrice("");
+      setManualImageUrl("");
+      setShowManualFields(false);
+      loadProducts();
+    } else {
+      showToast("상품 저장 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -453,6 +513,86 @@ export default function AdminDashboardPage() {
             )}
           </button>
         </form>
+
+        {/* Toggle Manual Input Mode */}
+        <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={() => setShowManualFields(!showManualFields)}
+            className="text-[11px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+          >
+            <Pencil className="w-3 h-3 text-red-500" />
+            <span>{showManualFields ? "❌ 수동 입력창 닫기" : "✏️ 스크랩 없이 수동으로 직접 입력하기"}</span>
+          </button>
+        </div>
+
+        {/* Fallback Inline Manual Input Form */}
+        {showManualFields && (
+          <form onSubmit={handleManualSave} className="pt-3 border-t border-red-100 bg-red-50/50 p-4 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-red-700 flex items-center gap-1">
+                <Pencil className="w-3.5 h-3.5" />
+                <span>수동 상품 정보 입력 폼</span>
+              </span>
+              <span className="text-[11px] text-gray-400">자동 스크랩이 실패했거나 수동 입력이 필요할 때 사용합니다.</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">국문 상품명 (필수)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="예: 하오하오 핑크 라면 77g, 30개"
+                  value={manualNameKr}
+                  onChange={(e) => setManualNameKr(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">쿠팡 판매가 (원, 필수)</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="예: 9900"
+                  value={manualCoupangPrice}
+                  onChange={(e) => setManualCoupangPrice(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">상품 이미지 URL (필수)</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://images.unsplash.com/..."
+                  value={manualImageUrl}
+                  onChange={(e) => setManualImageUrl(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowManualFields(false)}
+                className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs rounded-lg transition-colors"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-lg shadow transition-colors flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>수동 입력 상품 저장하기</span>
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Admin Settings Panel (Naver On/Off Switch) */}
